@@ -177,6 +177,19 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justif
 .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:12px 22px;border-radius:30px;font-size:.85rem;font-weight:600;box-shadow:0 12px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.25s;z-index:3000;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+/* Restore preview panel */
+.restore-panel{background:var(--bg);border-radius:18px;padding:14px 16px;margin-bottom:14px;font-size:.85rem;line-height:1.65;color:var(--muted)}
+.restore-panel strong{color:var(--text)}
+.restore-panel .pill{display:inline-block;background:var(--card);border:1px solid var(--border);padding:2px 9px;border-radius:20px;font-weight:700;font-size:.78rem;margin:0 2px}
+.restore-panel .pill.blue{color:var(--blue);border-color:var(--blue-soft)}
+.restore-panel .pill.green{color:var(--green);border-color:var(--green-soft)}
+
+.restore-btn-desc{display:block;font-weight:400;font-size:.78rem;opacity:.85;margin-top:2px}
+
+/* Last sync line */
+.sync-line{display:flex;align-items:center;justify-content:center;gap:6px;font-size:.7rem;color:var(--muted);margin-top:10px;font-weight:500;letter-spacing:.01em}
+.sync-line i{font-size:.75rem;opacity:.7}
+
 .hidden{display:none!important}
 
 @media(max-width:420px){
@@ -220,6 +233,9 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justif
       </svg>
       <div class="empty-title">No routines yet</div>
       <div class="empty-sub">Tap the + button to create your first<br>daily routine and start building momentum.</div>
+      <button class="btn btn-secondary hidden" id="restoreFromDriveEmpty" style="max-width:280px;margin:18px auto 0">
+        <i class="fas fa-cloud-download-alt"></i>&nbsp; Restore from Drive
+      </button>
     </div>
   </div>
 
@@ -272,18 +288,12 @@ let state = {
   books: []
 };
 
-// UI-only state
 let ui = {
   activeTab: 'habits',
   editingRoutineId: null,
   editingTaskId: null,
   addingTaskToRoutine: null,
-  bookFilters: {
-    q: '',
-    status: 'all',
-    genre: 'all',
-    sort: 'title'
-  },
+  bookFilters: { q:'', status:'all', genre:'all', sort:'title' },
   starDraft: 0
 };
 
@@ -300,7 +310,6 @@ function loadState(){
       state.routines = Array.isArray(p.routines) ? p.routines : [];
       state.books = Array.isArray(p.books) ? p.books : [];
     } else {
-      // First run — seed one example routine so the UI isn't empty
       state.routines = [{
         id: uid(),
         name: 'Daily Routine',
@@ -330,33 +339,22 @@ function saveState(){
    ============================================================ */
 function checkMidnightRollover(){
   const today = todayKey();
-  if(!state.lastActiveDate){
-    state.lastActiveDate = today;
-    saveState();
-    return false;
-  }
+  if(!state.lastActiveDate){ state.lastActiveDate = today; saveState(); return false; }
   if(state.lastActiveDate === today) return false;
 
-  // Save ratio for the previous active day, then reset all tasks
   state.routines.forEach(r => {
     const total = r.tasks.length;
     const done = r.tasks.filter(t => t.done).length;
     if(!r.history) r.history = {};
-    if(total > 0){
-      r.history[state.lastActiveDate] = { done, total };
-    }
+    if(total > 0) r.history[state.lastActiveDate] = { done, total };
     r.tasks.forEach(t => { t.done = false; });
   });
   state.lastActiveDate = today;
   saveState();
   return true;
 }
-// Check every 30 seconds for a date change while app is open
 setInterval(() => {
-  if(checkMidnightRollover()){
-    renderHabits();
-    toast('New day — routines reset');
-  }
+  if(checkMidnightRollover()){ renderHabits(); toast('New day — routines reset'); }
 }, 30000);
 
 /* ============================================================
@@ -400,10 +398,15 @@ function arcSvg(ratio){
 function renderHabits(){
   const list = document.getElementById('habitsList');
   const empty = document.getElementById('habitsEmpty');
+  const restoreEmptyBtn = document.getElementById('restoreFromDriveEmpty');
 
   if(state.routines.length === 0){
     list.innerHTML = '';
     empty.classList.remove('hidden');
+    // Offer restore only when BOTH local lists are empty AND a client ID is set
+    const hasClientId = !!localStorage.getItem(GAPI_CLIENT_KEY);
+    const bothEmpty = state.books.length === 0;
+    if(restoreEmptyBtn) restoreEmptyBtn.classList.toggle('hidden', !(hasClientId && bothEmpty));
     return;
   }
   empty.classList.add('hidden');
@@ -458,9 +461,7 @@ function renderHabits(){
 
     html += `<div class="routine-card">
       <div class="routine-header">
-        <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
-          ${nameHtml}
-        </div>
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">${nameHtml}</div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="routine-counter ${complete?'done':''}">${done}/${total} · ${pct}%</span>
           <div class="routine-actions">
@@ -476,7 +477,6 @@ function renderHabits(){
   list.innerHTML = html;
   bindHabitsEvents();
 
-  // Focus editing inputs
   if(ui.editingRoutineId){
     const el = document.getElementById(`rename-routine-${ui.editingRoutineId}`);
     if(el){ el.focus(); el.select(); }
@@ -556,35 +556,34 @@ function bindHabitsEvents(){
     });
   });
 
-  // Inline rename save/cancel
   if(ui.editingRoutineId){
     const el = document.getElementById(`rename-routine-${ui.editingRoutineId}`);
     if(el){
       el.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter'){ commitRoutineRename(el.value.trim()); }
+        if(e.key === 'Enter') commitRoutineRename(el.value.trim());
         else if(e.key === 'Escape'){ ui.editingRoutineId = null; renderHabits(); }
       });
-      el.addEventListener('blur', () => { commitRoutineRename(el.value.trim()); });
+      el.addEventListener('blur', () => commitRoutineRename(el.value.trim()));
     }
   }
   if(ui.editingTaskId){
     const el = document.getElementById(`rename-task-${ui.editingTaskId}`);
     if(el){
       el.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter'){ commitTaskRename(el.value.trim()); }
+        if(e.key === 'Enter') commitTaskRename(el.value.trim());
         else if(e.key === 'Escape'){ ui.editingTaskId = null; renderHabits(); }
       });
-      el.addEventListener('blur', () => { commitTaskRename(el.value.trim()); });
+      el.addEventListener('blur', () => commitTaskRename(el.value.trim()));
     }
   }
   if(ui.addingTaskToRoutine){
     const el = document.getElementById(`new-task-${ui.addingTaskToRoutine}`);
     if(el){
       el.addEventListener('keydown', (e) => {
-        if(e.key === 'Enter'){ commitNewTask(el.value.trim()); }
+        if(e.key === 'Enter') commitNewTask(el.value.trim());
         else if(e.key === 'Escape'){ ui.addingTaskToRoutine = null; renderHabits(); }
       });
-      el.addEventListener('blur', () => { commitNewTask(el.value.trim()); });
+      el.addEventListener('blur', () => commitNewTask(el.value.trim()));
     }
   }
 }
@@ -610,9 +609,7 @@ function commitTaskRename(val){
 function commitNewTask(val){
   if(!ui.addingTaskToRoutine) return;
   const r = state.routines.find(x => x.id === ui.addingTaskToRoutine);
-  if(r && val){
-    r.tasks.push({ id: uid(), name: val, done: false });
-  }
+  if(r && val){ r.tasks.push({ id: uid(), name: val, done: false }); }
   ui.addingTaskToRoutine = null;
   saveState();
   renderHabits();
@@ -652,7 +649,6 @@ function renderBooks(){
   };
   arr.sort(sorters[f.sort] || sorters.title);
 
-  // Update active filter count
   let cnt = 0;
   if(f.q) cnt++;
   if(f.status !== 'all') cnt++;
@@ -684,12 +680,8 @@ function renderBooks(){
   };
 
   list.innerHTML = arr.map(b => {
-    const stars = b.rating
-      ? '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating)
-      : '☆☆☆☆☆';
-    const dates = (b.dateStarted || b.dateFinished)
-      ? `${b.dateStarted || '—'} → ${b.dateFinished || '—'}`
-      : '';
+    const stars = b.rating ? '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating) : '☆☆☆☆☆';
+    const dates = (b.dateStarted || b.dateFinished) ? `${b.dateStarted || '—'} → ${b.dateFinished || '—'}` : '';
     return `<div class="book-card" data-edit-book="${b.id}">
       <div class="book-title-row">
         <div style="min-width:0;flex:1">
@@ -762,7 +754,6 @@ function openBookModal(bookId){
   const b = editing ? state.books.find(x => x.id === bookId) : null;
   const genres = ['Fiction','Non-Fiction','Self-Help','Fantasy','Science Fiction','Biography','History','Mystery','Romance','Thriller','Poetry','Other'];
   const g = b?.genre || '';
-  const isCustom = g && !genres.includes(g);
   ui.starDraft = b?.rating || 0;
 
   openModal(`
@@ -839,11 +830,8 @@ function openBookModal(bookId){
       notes: document.getElementById('bNotes').value.trim()
     };
     if(!data.title) return;
-    if(editing){
-      Object.assign(b, data);
-    } else {
-      state.books.push({ id: uid(), addedAt: Date.now(), ...data });
-    }
+    if(editing){ Object.assign(b, data); }
+    else { state.books.push({ id: uid(), addedAt: Date.now(), ...data }); }
     saveState();
     renderBooks();
     closeModal();
@@ -951,19 +939,22 @@ function openSettingsModal(){
       <label>Google OAuth Client ID</label>
       <input type="text" id="clientIdInput" placeholder="Paste your CjayNotes client ID…" value="${esc(clientId)}">
     </div>
-    <div class="settings-row">
-      <div>
-        <div class="label">Status</div>
-        <div class="sub" id="driveStatusText">${clientId ? (lastSync ? 'Last synced: ' + lastSync : 'Not synced yet') : 'Not configured'}</div>
+    <div class="settings-row" style="border-bottom:none;padding-top:6px;padding-bottom:6px">
+      <div style="flex:1">
+        <div class="sub" id="driveStatusText" style="text-align:left">${clientId ? 'Ready' : 'Not configured'}</div>
       </div>
       <button class="chip-btn" id="saveClientBtn">Save ID</button>
     </div>
-    <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="chip-btn" id="driveConnectBtn" style="flex:1">Connect Drive</button>
-      <button class="chip-btn" id="driveSyncBtn" style="flex:1">Sync now</button>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="chip-btn" id="driveConnectBtn" style="flex:1"><i class="fas fa-plug"></i> Connect</button>
+      <button class="chip-btn" id="driveSyncBtn" style="flex:1"><i class="fas fa-cloud-upload-alt"></i> Push</button>
+      <button class="chip-btn" id="drivePullBtn" style="flex:1"><i class="fas fa-cloud-download-alt"></i> Pull</button>
+    </div>
+    <div class="sync-line" id="lastSyncLine">
+      <i class="far fa-clock"></i><span>${lastSync ? 'Last synced ' + esc(lastSync) : 'Not synced yet'}</span>
     </div>
 
-    <div class="settings-row" style="margin-top:20px">
+    <div class="settings-row" style="margin-top:24px">
       <div>
         <div class="label">Local backup</div>
         <div class="sub">Export / import JSON</div>
@@ -984,28 +975,34 @@ function openSettingsModal(){
     <button class="btn btn-danger" id="clearAllBtn" style="margin-top:10px">Clear all data</button>
 
     <div style="text-align:center;color:var(--muted);font-size:.72rem;margin-top:20px">
-      BookHabits · v1.0 · Shared OAuth client with CjayNotes
+      BookHabits · v1.1 · Shared OAuth client with CjayNotes
     </div>
   `);
 
-  document.getElementById('saveClientBtn').addEventListener('click', () => {
+  document.getElementById('saveClientBtn').addEventListener('click', async () => {
     const v = document.getElementById('clientIdInput').value.trim();
     if(v) localStorage.setItem(GAPI_CLIENT_KEY, v);
     else localStorage.removeItem(GAPI_CLIENT_KEY);
     toast('Client ID saved');
-    initDrive().then(() => {
-      document.getElementById('driveStatusText').textContent =
-        v ? 'Ready — click Connect Drive' : 'Not configured';
-    });
+    gapiReady = false; accessToken = null;
+    await initDrive();
+    document.getElementById('driveStatusText').textContent = v ? 'Ready — click Connect' : 'Not configured';
   });
 
-  document.getElementById('driveConnectBtn').addEventListener('click', driveConnect);
-  document.getElementById('driveSyncBtn').addEventListener('click', driveSync);
+  document.getElementById('driveConnectBtn').addEventListener('click', async () => {
+    try{
+      await ensureAccessToken();
+      toast('Drive connected');
+      const s = document.getElementById('driveStatusText');
+      if(s) s.textContent = 'Connected — Push or Pull';
+    }catch(e){ toast('Connection failed'); }
+  });
+
+  document.getElementById('driveSyncBtn').addEventListener('click', drivePush);
+  document.getElementById('drivePullBtn').addEventListener('click', drivePull);
 
   document.getElementById('exportBtn').addEventListener('click', exportBackup);
-  document.getElementById('importBtn').addEventListener('click', () => {
-    document.getElementById('importFile').click();
-  });
+  document.getElementById('importBtn').addEventListener('click', () => document.getElementById('importFile').click());
   document.getElementById('importFile').addEventListener('change', (e) => {
     const file = e.target.files[0]; if(!file) return;
     const reader = new FileReader();
@@ -1036,18 +1033,18 @@ function openSettingsModal(){
 }
 
 /* ============================================================
-   GOOGLE DRIVE SYNC (reuses CjayNotes client ID)
+   GOOGLE DRIVE SYNC
    ============================================================ */
 let gapiReady = false;
 let tokenClient = null;
 let accessToken = null;
+let tokenResolvers = [];
 
 async function initDrive(){
   const clientId = localStorage.getItem(GAPI_CLIENT_KEY);
   if(!clientId) return false;
   if(gapiReady) return true;
   if(typeof gapi === 'undefined' || typeof google === 'undefined'){
-    // Libraries not loaded yet — retry shortly
     setTimeout(initDrive, 500);
     return false;
   }
@@ -1060,9 +1057,13 @@ async function initDrive(){
       client_id: clientId,
       scope: 'https://www.googleapis.com/auth/drive.file',
       callback: (resp) => {
+        const resolvers = tokenResolvers; tokenResolvers = [];
         if(resp.access_token){
           accessToken = resp.access_token;
           gapi.client.setToken({ access_token: accessToken });
+          resolvers.forEach(r => r(accessToken));
+        } else {
+          resolvers.forEach(r => r(null));
         }
       }
     });
@@ -1074,16 +1075,17 @@ async function initDrive(){
   }
 }
 
-function driveConnect(){
-  if(!localStorage.getItem(GAPI_CLIENT_KEY)){
-    toast('Set your Client ID first');
-    return;
-  }
-  if(!gapiReady){
-    initDrive().then(ok => { if(!ok) toast('Drive not ready — try again in a moment'); else tokenClient.requestAccessToken(); });
-    return;
-  }
-  tokenClient.requestAccessToken();
+function ensureAccessToken(){
+  if(accessToken) return Promise.resolve(accessToken);
+  return new Promise(async (resolve, reject) => {
+    if(!localStorage.getItem(GAPI_CLIENT_KEY)){ reject(new Error('no client id')); return; }
+    if(!gapiReady){
+      const ok = await initDrive();
+      if(!ok){ reject(new Error('init failed')); return; }
+    }
+    tokenResolvers.push((tok) => { if(tok) resolve(tok); else reject(new Error('auth failed')); });
+    tokenClient.requestAccessToken();
+  });
 }
 
 async function getOrCreateFolder(){
@@ -1103,13 +1105,15 @@ async function findFile(folderId){
   return (res.result.files && res.result.files[0]) || null;
 }
 
-async function driveSync(){
-  if(!accessToken){ toast('Connect to Drive first'); return; }
+/* --- PUSH: upload local → Drive --- */
+async function drivePush(){
+  if(!accessToken){
+    try{ await ensureAccessToken(); }catch(e){ toast('Connect to Drive first'); return; }
+  }
   try{
     const folderId = await getOrCreateFolder();
     const file = await findFile(folderId);
     const body = JSON.stringify(state);
-    const metadata = { name: DRIVE_FILE, mimeType: 'application/json' };
     if(file){
       await gapi.client.request({
         path: `/upload/drive/v3/files/${file.id}`,
@@ -1119,7 +1123,7 @@ async function driveSync(){
       });
     } else {
       const form = new FormData();
-      form.append('metadata', new Blob([JSON.stringify({ ...metadata, parents:[folderId] })], {type:'application/json'}));
+      form.append('metadata', new Blob([JSON.stringify({ name: DRIVE_FILE, mimeType:'application/json', parents:[folderId] })], {type:'application/json'}));
       form.append('file', new Blob([body], {type:'application/json'}));
       await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
         method: 'POST',
@@ -1129,11 +1133,117 @@ async function driveSync(){
     }
     const stamp = new Date().toLocaleString();
     localStorage.setItem(GAPI_LAST_SYNC, stamp);
-    toast('Synced to Drive');
+    updateLastSyncLine(stamp);
+    toast('Pushed to Drive');
   }catch(e){
     console.warn(e);
-    toast('Sync failed');
+    toast('Push failed');
   }
+}
+
+/* --- PULL: download Drive → local (with merge/replace choice) --- */
+async function drivePull(){
+  if(!accessToken){
+    try{ await ensureAccessToken(); }catch(e){ toast('Connect to Drive first'); return; }
+  }
+  try{
+    const folderId = await getOrCreateFolder();
+    const file = await findFile(folderId);
+    if(!file){ toast('No backup found on Drive'); return; }
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+      headers: { Authorization: 'Bearer ' + accessToken }
+    });
+    if(!res.ok){ toast('Pull failed'); return; }
+    let cloudData;
+    try{ cloudData = await res.json(); }
+    catch(e){ toast('Backup file is corrupt'); return; }
+    if(!cloudData || (!Array.isArray(cloudData.routines) && !Array.isArray(cloudData.books))){
+      toast('Backup file is empty'); return;
+    }
+    openRestoreModal(cloudData, file.modifiedTime);
+  }catch(e){
+    console.warn(e);
+    toast('Pull failed');
+  }
+}
+
+function updateLastSyncLine(stamp){
+  const el = document.getElementById('lastSyncLine');
+  if(el) el.innerHTML = `<i class="far fa-clock"></i><span>Last synced ${esc(stamp)}</span>`;
+}
+
+/* --- Restore modal: merge vs replace --- */
+function openRestoreModal(cloud, modifiedTime){
+  const cloudR = Array.isArray(cloud.routines) ? cloud.routines.length : 0;
+  const cloudB = Array.isArray(cloud.books) ? cloud.books.length : 0;
+  const localR = state.routines.length;
+  const localB = state.books.length;
+  const when = modifiedTime ? new Date(modifiedTime).toLocaleString() : 'unknown time';
+
+  openModal(`
+    <div class="modal-header">
+      <h2>Restore from Drive</h2>
+      <button class="close-x">&times;</button>
+    </div>
+
+    <div class="restore-panel">
+      <div style="margin-bottom:6px">Cloud backup from <strong>${esc(when)}</strong></div>
+      <div>Contains
+        <span class="pill blue">${cloudR} routine${cloudR!==1?'s':''}</span>
+        <span class="pill green">${cloudB} book${cloudB!==1?'s':''}</span>
+      </div>
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        Your local data:
+        <span class="pill">${localR} routine${localR!==1?'s':''}</span>
+        <span class="pill">${localB} book${localB!==1?'s':''}</span>
+      </div>
+    </div>
+
+    <button type="button" class="btn btn-primary" id="mergeBtn" style="margin-bottom:8px">
+      Merge
+      <span class="restore-btn-desc">Add cloud items not already on this device. Nothing local is lost.</span>
+    </button>
+
+    <button type="button" class="btn btn-danger" id="replaceBtn">
+      Replace
+      <span class="restore-btn-desc">Wipe this device and use the cloud backup only.</span>
+    </button>
+  `);
+
+  document.getElementById('mergeBtn').addEventListener('click', () => {
+    mergeFromCloud(cloud);
+    closeModal();
+    toast('Merged from Drive');
+  });
+  document.getElementById('replaceBtn').addEventListener('click', () => {
+    if(!confirm('Replace ALL local data with the cloud backup?')) return;
+    replaceFromCloud(cloud);
+    closeModal();
+    toast('Restored from Drive');
+  });
+}
+
+function mergeFromCloud(cloud){
+  const localRoutineIds = new Set(state.routines.map(r => r.id));
+  (cloud.routines || []).forEach(cr => {
+    if(cr && cr.id && !localRoutineIds.has(cr.id)) state.routines.push(cr);
+  });
+  const localBookIds = new Set(state.books.map(b => b.id));
+  (cloud.books || []).forEach(cb => {
+    if(cb && cb.id && !localBookIds.has(cb.id)) state.books.push(cb);
+  });
+  saveState();
+  renderHabits();
+  renderBooks();
+}
+
+function replaceFromCloud(cloud){
+  state.lastActiveDate = cloud.lastActiveDate || todayKey();
+  state.routines = Array.isArray(cloud.routines) ? cloud.routines : [];
+  state.books = Array.isArray(cloud.books) ? cloud.books : [];
+  saveState();
+  renderHabits();
+  renderBooks();
 }
 
 /* ============================================================
@@ -1144,9 +1254,8 @@ function exportBackup(){
   const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const stamp = todayKey();
   a.href = url;
-  a.download = `cjay-bookhabits-backup-${stamp}.json`;
+  a.download = `cjay-bookhabits-backup-${todayKey()}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -1188,6 +1297,21 @@ document.getElementById('searchTrigger').addEventListener('click', openSearchMod
 document.getElementById('fabBtn').addEventListener('click', () => {
   if(ui.activeTab === 'habits') openAddRoutineModal();
   else openBookModal(null);
+});
+
+/* Empty-state restore button (fresh device, client ID already set) */
+document.getElementById('restoreFromDriveEmpty').addEventListener('click', async () => {
+  if(!localStorage.getItem(GAPI_CLIENT_KEY)){
+    openSettingsModal();
+    toast('Set your Client ID first');
+    return;
+  }
+  try{
+    await ensureAccessToken();
+    await drivePull();
+  }catch(e){
+    toast('Could not connect — try again');
+  }
 });
 
 let toastTimer = null;
