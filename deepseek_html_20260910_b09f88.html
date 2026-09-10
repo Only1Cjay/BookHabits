@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BookHabits</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{
+  --bg:#f2f5fa; --card:#ffffff; --text:#0b2a4a; --muted:#5d7a9a;
+  --border:#d7e6f5; --border-green:#d4eee2;
+  --blue:#1a7ab0; --blue-soft:#e2efff; --blue-deep:#124076;
+  --green:#0e7a5a; --green-soft:#e2f3ec; --green-deep:#0b4e3a;
+  --shadow:0 8px 18px rgba(0,40,80,.06), 0 2px 6px rgba(0,20,40,.03);
+  --shadow-green:0 8px 18px rgba(0,40,20,.05), 0 2px 6px rgba(0,20,10,.02);
+  --overlay:rgba(10,30,40,.45);
+  --fab:#1a5f7a; --fab-hover:#0e4b63;
+  --star:#e6b422;
+}
+body[data-theme="dark"]{
+  --bg:#0e151c; --card:#1a2530; --text:#e8f0f7; --muted:#8aa2b9;
+  --border:#2a3a4a; --border-green:#243a30;
+  --blue:#3a9fd5; --blue-soft:#16334a; --blue-deep:#bfe0f5;
+  --green:#2ec494; --green-soft:#163a2d; --green-deep:#bfeeda;
+  --shadow:0 8px 18px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.2);
+  --shadow-green:0 8px 18px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.2);
+  --overlay:rgba(0,0,0,.65);
+  --fab:#1a7ab0; --fab-hover:#146290;
+  --star:#f0c84a;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:14px 12px 100px;transition:background .25s,color .25s}
+.app{max-width:620px;width:100%}
+
+/* Top bar */
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:6px 4px 10px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-logo{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--green));display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;box-shadow:var(--shadow)}
+.brand-name{font-weight:700;font-size:1.15rem;letter-spacing:-.02em}
+.brand-name small{display:block;font-size:.68rem;font-weight:500;color:var(--muted);letter-spacing:0}
+.top-actions{display:flex;gap:8px}
+.icon-btn{width:40px;height:40px;border-radius:14px;border:1px solid var(--border);background:var(--card);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;transition:.15s;box-shadow:var(--shadow)}
+.icon-btn:hover{color:var(--blue);border-color:var(--blue)}
+.icon-btn:active{transform:scale(.94)}
+
+/* Tab toggle */
+.tab-toggle{display:flex;background:var(--card);border-radius:40px;padding:4px;box-shadow:var(--shadow);margin-bottom:16px;border:1px solid var(--border)}
+.tab-btn{flex:1;border:none;background:transparent;padding:11px 16px;border-radius:30px;font-weight:600;font-size:.95rem;color:var(--muted);transition:.2s;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.01em}
+.tab-btn.active[data-tab="habits"]{background:var(--blue);color:#fff;box-shadow:0 6px 14px rgba(26,122,176,.35)}
+.tab-btn.active[data-tab="books"]{background:var(--green);color:#fff;box-shadow:0 6px 14px rgba(14,122,90,.35)}
+.tab-content{display:none;flex-direction:column;gap:14px}
+.tab-content.active{display:flex}
+
+/* Routine card (Habits) */
+.routine-card{background:var(--card);border-radius:24px;padding:18px;border:1px solid var(--border);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px}
+.routine-header{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.routine-name{font-weight:700;font-size:1.1rem;color:var(--blue-deep);letter-spacing:-.01em;cursor:pointer;padding:2px 6px;border-radius:8px;transition:.15s}
+.routine-name:hover{background:var(--blue-soft)}
+.routine-counter{background:var(--blue-soft);color:var(--blue);padding:6px 12px;border-radius:30px;font-size:.82rem;font-weight:700;white-space:nowrap}
+.routine-counter.done{background:var(--green-soft);color:var(--green)}
+.routine-actions{display:flex;gap:6px}
+.mini-btn{width:30px;height:30px;border-radius:10px;border:none;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem;transition:.15s}
+.mini-btn:hover{background:var(--blue-soft);color:var(--blue)}
+.mini-btn.danger:hover{background:#fde8e8;color:#c0392b}
+
+/* 7-day arc strip */
+.week-strip{display:flex;justify-content:space-between;gap:4px;padding:4px 2px 2px}
+.day-cell{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.day-arc{position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center}
+.day-arc svg{position:absolute;inset:0;width:100%;height:100%}
+.day-arc .day-inner{position:relative;z-index:1;font-size:.62rem;font-weight:700;color:var(--muted)}
+.day-cell.today .day-inner{color:var(--blue)}
+.day-label{font-size:.62rem;font-weight:600;color:var(--muted);letter-spacing:.02em}
+
+/* Tasks */
+.task-list{display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--border);padding-top:10px}
+.task-row{display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:14px;transition:.15s;cursor:pointer}
+.task-row:hover{background:var(--blue-soft)}
+.task-check{width:24px;height:24px;border-radius:8px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s;background:var(--card)}
+.task-row.done .task-check{background:var(--blue);border-color:var(--blue);color:#fff}
+.task-check i{font-size:.7rem;opacity:0;transition:.15s}
+.task-row.done .task-check i{opacity:1}
+.task-name{flex:1;font-size:.95rem;font-weight:500;color:var(--text);cursor:pointer;padding:2px 4px;border-radius:6px}
+.task-name:hover{background:var(--blue-soft)}
+.task-row.done .task-name{text-decoration:line-through;color:var(--muted)}
+.task-del{width:26px;height:26px;border-radius:8px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:.8rem;opacity:.4;transition:.15s}
+.task-del:hover{opacity:1;background:#fde8e8;color:#c0392b}
+.add-task-btn{margin-top:4px;border:1px dashed var(--border);background:transparent;color:var(--muted);padding:10px;border-radius:14px;font-weight:600;font-size:.85rem;cursor:pointer;transition:.15s;text-align:left;padding-left:16px}
+.add-task-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-soft)}
+.inline-input{flex:1;background:transparent;border:none;border-bottom:2px solid var(--blue);font-size:.95rem;padding:4px 4px;outline:none;font-weight:500;color:var(--text);font-family:inherit}
+
+/* Books */
+.books-bar{display:flex;gap:10px;align-items:center}
+.search-trigger{flex:1;background:var(--card);border-radius:16px;padding:14px 18px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow-green);border:1px solid var(--border-green);cursor:pointer;color:var(--muted);font-weight:500;font-size:.9rem;transition:.15s}
+.search-trigger:hover{border-color:var(--green);color:var(--green)}
+.search-trigger.active-filter{border-color:var(--green);color:var(--green);background:var(--green-soft)}
+.active-filters{margin-left:auto;font-size:.72rem;background:var(--green);color:#fff;padding:3px 8px;border-radius:20px;font-weight:700}
+
+.book-list{display:flex;flex-direction:column;gap:12px}
+.book-card{background:var(--card);border-radius:22px;padding:16px 18px;border:1px solid var(--border-green);box-shadow:var(--shadow-green);display:flex;flex-direction:column;gap:9px;cursor:pointer;transition:.15s}
+.book-card:hover{border-color:var(--green);transform:translateY(-1px)}
+.book-title{font-weight:700;font-size:1.05rem;color:var(--green-deep);letter-spacing:-.01em}
+.book-title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.book-author{font-size:.82rem;color:var(--muted);font-weight:500;margin-top:2px}
+.rating-stars{color:var(--star);letter-spacing:1px;font-size:.85rem;white-space:nowrap}
+.book-meta{display:flex;flex-wrap:wrap;gap:8px;font-size:.72rem;color:var(--muted);align-items:center}
+.badge{background:var(--green-soft);padding:4px 10px;border-radius:20px;font-size:.7rem;font-weight:700;color:var(--green)}
+.badge.status-reading{background:#fff3d6;color:#a37b12}
+.badge.status-completed{background:var(--green-soft);color:var(--green)}
+.badge.status-toread{background:var(--blue-soft);color:var(--blue)}
+.book-notes{font-size:.82rem;color:var(--muted);background:var(--bg);padding:9px 12px;border-radius:14px;line-height:1.45;border-left:3px solid var(--green);font-style:italic}
+
+/* Empty states */
+.empty-state{text-align:center;padding:48px 24px;color:var(--muted)}
+.empty-state svg{width:120px;height:120px;margin-bottom:16px;opacity:.85}
+.empty-title{font-weight:700;font-size:1.05rem;color:var(--text);margin-bottom:6px}
+.empty-sub{font-size:.88rem;line-height:1.5}
+
+/* FAB */
+.fab{position:fixed;bottom:24px;right:24px;width:62px;height:62px;border-radius:22px;background:var(--fab);color:#fff;border:none;font-size:1.4rem;display:flex;align-items:center;justify-content:center;box-shadow:0 14px 28px rgba(25,80,120,.35), 0 4px 10px rgba(0,0,0,.12);cursor:pointer;transition:transform .15s,background .2s;z-index:900}
+.fab:hover{background:var(--fab-hover);transform:scale(1.05)}
+.fab:active{transform:scale(.96)}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:var(--overlay);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:2000;padding:16px}
+.modal-overlay.active{display:flex}
+.modal{background:var(--card);border-radius:28px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:24px 22px;box-shadow:0 30px 60px rgba(0,0,0,.3);animation:pop .22s ease-out}
+@keyframes pop{from{opacity:0;transform:scale(.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-header h2{font-size:1.3rem;font-weight:700;letter-spacing:-.02em}
+.close-x{background:none;border:none;font-size:1.5rem;color:var(--muted);cursor:pointer;line-height:1;padding:4px 8px;border-radius:10px}
+.close-x:hover{background:var(--bg);color:var(--text)}
+
+/* Form */
+.form-group{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.form-group label{font-size:.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-left:4px}
+.form-group input,.form-group select,.form-group textarea{padding:13px 16px;border-radius:16px;border:1.5px solid var(--border);font-size:.92rem;background:var(--bg);outline:none;transition:.15s;font-family:inherit;color:var(--text)}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue);background:var(--card)}
+.form-group textarea{min-height:80px;resize:vertical}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.btn{width:100%;border:none;padding:15px;border-radius:18px;font-weight:700;font-size:.95rem;cursor:pointer;transition:.15s;font-family:inherit}
+.btn-primary{background:var(--blue);color:#fff;box-shadow:0 10px 20px rgba(26,122,176,.28)}
+.btn-primary:hover{background:var(--blue-deep)}
+.btn-primary.green{background:var(--green);box-shadow:0 10px 20px rgba(14,122,90,.28)}
+.btn-primary.green:hover{background:var(--green-deep)}
+.btn-secondary{background:var(--bg);color:var(--text);border:1px solid var(--border);margin-top:8px}
+.btn-secondary:hover{background:var(--card)}
+.btn-danger{background:#fde8e8;color:#c0392b;margin-top:8px}
+.btn-danger:hover{background:#fbd6d6}
+
+/* Star picker */
+.star-picker{display:flex;gap:6px;padding:4px 0;font-size:1.7rem;color:var(--border);cursor:pointer;user-select:none}
+.star-picker .star{transition:.12s}
+.star-picker .star.on{color:var(--star)}
+.star-picker .star:hover{transform:scale(1.15)}
+
+/* Settings rows */
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:14px 4px;border-bottom:1px solid var(--border);gap:12px}
+.settings-row:last-of-type{border-bottom:none}
+.settings-row .label{font-weight:600;font-size:.92rem}
+.settings-row .sub{font-size:.75rem;color:var(--muted);margin-top:2px}
+.settings-row .val{font-size:.82rem;color:var(--muted);font-weight:500}
+.chip-btn{border:1px solid var(--border);background:var(--card);padding:8px 14px;border-radius:12px;font-weight:600;font-size:.8rem;cursor:pointer;color:var(--text);transition:.15s;font-family:inherit}
+.chip-btn:hover{border-color:var(--blue);color:var(--blue)}
+.chip-btn.danger:hover{border-color:#c0392b;color:#c0392b}
+
+.sort-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.sort-chip{border:1px solid var(--border);background:var(--card);padding:8px 12px;border-radius:12px;font-weight:600;font-size:.78rem;cursor:pointer;color:var(--muted);transition:.15s;font-family:inherit}
+.sort-chip.active{background:var(--green);color:#fff;border-color:var(--green)}
+.sort-chip:hover:not(.active){border-color:var(--green);color:var(--green)}
+
+/* Toast */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:12px 22px;border-radius:30px;font-size:.85rem;font-weight:600;box-shadow:0 12px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:.25s;z-index:3000;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.hidden{display:none!important}
+
+@media(max-width:420px){
+  .day-arc{width:34px;height:34px}
+  .routine-name{font-size:1rem}
+  .book-title{font-size:.98rem}
+  .form-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Top bar -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo"><i class="fas fa-layer-group"></i></div>
+      <div class="brand-name">BookHabits<small>Habits &amp; Reading Tracker</small></div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="themeBtn" title="Toggle theme"><i class="fas fa-moon"></i></button>
+      <button class="icon-btn" id="settingsBtn" title="Settings"><i class="fas fa-cog"></i></button>
+    </div>
+  </div>
+
+  <!-- Tab toggle -->
+  <div class="tab-toggle">
+    <button class="tab-btn active" data-tab="habits"><i class="fas fa-check-circle"></i> Habits</button>
+    <button class="tab-btn" data-tab="books"><i class="fas fa-book"></i> Books</button>
+  </div>
+
+  <!-- Habits tab -->
+  <div class="tab-content active" id="habitsTab">
+    <div id="habitsList" style="display:flex;flex-direction:column;gap:14px"></div>
+    <div class="empty-state hidden" id="habitsEmpty">
+      <svg viewBox="0 0 120 120" fill="none">
+        <rect x="18" y="24" width="84" height="72" rx="14" stroke="currentColor" stroke-width="2.5" opacity=".35"/>
+        <path d="M34 48l8 8 16-16" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
+        <path d="M34 74l8 8 16-16" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".3"/>
+        <circle cx="86" cy="52" r="14" stroke="currentColor" stroke-width="2.5" opacity=".5"/>
+        <path d="M86 44v8l5 3" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity=".5"/>
+      </svg>
+      <div class="empty-title">No routines yet</div>
+      <div class="empty-sub">Tap the + button to create your first<br>daily routine and start building momentum.</div>
+    </div>
+  </div>
+
+  <!-- Books tab -->
+  <div class="tab-content" id="booksTab">
+    <div class="books-bar">
+      <div class="search-trigger" id="searchTrigger">
+        <i class="fas fa-search"></i><span>Search &amp; filter books</span>
+        <span class="active-filters hidden" id="activeFilterCount">0</span>
+      </div>
+    </div>
+    <div class="book-list" id="booksList"></div>
+    <div class="empty-state hidden" id="booksEmpty">
+      <svg viewBox="0 0 120 120" fill="none">
+        <path d="M24 34c0-5 4-9 9-9h24v68H33c-5 0-9-4-9-9V34z" stroke="currentColor" stroke-width="2.5" opacity=".5"/>
+        <path d="M57 25h24c5 0 9 4 9 9v50c0 5-4 9-9 9H57" stroke="currentColor" stroke-width="2.5" opacity=".3"/>
+        <path d="M57 25v68" stroke="currentColor" stroke-width="2.5" opacity=".5"/>
+        <path d="M66 45h16M66 57h16M66 69h10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity=".35"/>
+      </svg>
+      <div class="empty-title">No books yet</div>
+      <div class="empty-sub">Tap + to log a book you're reading,<br>or one you've just finished.</div>
+    </div>
+  </div>
+</div>
+
+<button class="fab" id="fabBtn"><i class="fas fa-plus"></i></button>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const STORAGE_KEY = 'cjay_bookhabits_v1';
+const DRIVE_FOLDER = 'BookHabits';
+const DRIVE_FILE = 'cjay-bookhabits.json';
+const GAPI_CLIENT_KEY = 'cjay_gdrive_client_id';
+const GAPI_LAST_SYNC = 'cjay_bookhabits_last_sync';
+
+let state = {
+  lastActiveDate: null,
+  routines: [],
+  books: []
+};
+
+// UI-only state
+let ui = {
+  activeTab: 'habits',
+  editingRoutineId: null,
+  editingTaskId: null,
+  addingTaskToRoutine: null,
+  bookFilters: {
+    q: '',
+    status: 'all',
+    genre: 'all',
+    sort: 'title'
+  },
+  starDraft: 0
+};
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function todayKey(d){ d = d || new Date(); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; }
+function esc(s){ if(s==null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const p = JSON.parse(raw);
+      state.lastActiveDate = p.lastActiveDate || null;
+      state.routines = Array.isArray(p.routines) ? p.routines : [];
+      state.books = Array.isArray(p.books) ? p.books : [];
+    } else {
+      // First run — seed one example routine so the UI isn't empty
+      state.routines = [{
+        id: uid(),
+        name: 'Daily Routine',
+        tasks: [
+          { id: uid(), name: 'Brush', done: false },
+          { id: uid(), name: 'Eat', done: false },
+          { id: uid(), name: 'Wash clothes', done: false },
+          { id: uid(), name: 'Pray', done: false }
+        ],
+        history: {}
+      }];
+      state.lastActiveDate = todayKey();
+      state.books = [];
+    }
+  }catch(e){ console.warn('Load failed', e); }
+  if(!Array.isArray(state.routines)) state.routines = [];
+  if(!Array.isArray(state.books)) state.books = [];
+}
+
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ console.warn('Save failed', e); }
+}
+
+/* ============================================================
+   MIDNIGHT ROLLOVER
+   ============================================================ */
+function checkMidnightRollover(){
+  const today = todayKey();
+  if(!state.lastActiveDate){
+    state.lastActiveDate = today;
+    saveState();
+    return false;
+  }
+  if(state.lastActiveDate === today) return false;
+
+  // Save ratio for the previous active day, then reset all tasks
+  state.routines.forEach(r => {
+    const total = r.tasks.length;
+    const done = r.tasks.filter(t => t.done).length;
+    if(!r.history) r.history = {};
+    if(total > 0){
+      r.history[state.lastActiveDate] = { done, total };
+    }
+    r.tasks.forEach(t => { t.done = false; });
+  });
+  state.lastActiveDate = today;
+  saveState();
+  return true;
+}
+// Check every 30 seconds for a date change while app is open
+setInterval(() => {
+  if(checkMidnightRollover()){
+    renderHabits();
+    toast('New day — routines reset');
+  }
+}, 30000);
+
+/* ============================================================
+   HABITS RENDERING
+   ============================================================ */
+function last7Days(){
+  const out = [];
+  const now = new Date();
+  for(let i=6; i>=0; i--){
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    d.setDate(d.getDate() - i);
+    out.push({ date:d, key:todayKey(d), label:d.toLocaleDateString(undefined,{weekday:'narrow'}) });
+  }
+  return out;
+}
+
+function routineRatioForDate(routine, dateKey, today){
+  if(dateKey === today){
+    const total = routine.tasks.length;
+    const done = routine.tasks.filter(t => t.done).length;
+    return { done, total };
+  }
+  const h = routine.history && routine.history[dateKey];
+  if(h) return { done: h.done, total: h.total };
+  return { done: 0, total: routine.tasks.length || 0 };
+}
+
+function arcSvg(ratio){
+  const r = 15.9155;
+  const C = 2 * Math.PI * r;
+  const off = C * (1 - Math.max(0, Math.min(1, ratio)));
+  const color = ratio >= 0.999 ? 'var(--green)' : ratio > 0 ? 'var(--blue)' : 'transparent';
+  return `<svg viewBox="0 0 36 36">
+    <circle cx="18" cy="18" r="${r}" fill="none" stroke="var(--border)" stroke-width="3.2"/>
+    <circle cx="18" cy="18" r="${r}" fill="none" stroke="${color}" stroke-width="3.2"
+      stroke-dasharray="${C.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"
+      stroke-linecap="round" transform="rotate(-90 18 18)"/>
+  </svg>`;
+}
+
+function renderHabits(){
+  const list = document.getElementById('habitsList');
+  const empty = document.getElementById('habitsEmpty');
+
+  if(state.routines.length === 0){
+    list.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  const days = last7Days();
+  const today = todayKey();
+
+  let html = '';
+  state.routines.forEach(routine => {
+    const total = routine.tasks.length;
+    const done = routine.tasks.filter(t => t.done).length;
+    const pct = total ? Math.round((done/total)*100) : 0;
+    const complete = total > 0 && done === total;
+
+    const strip = days.map(d => {
+      const r = routineRatioForDate(routine, d.key, today);
+      const ratio = r.total ? r.done / r.total : 0;
+      const label = (d.key === today) ? `${r.done}/${r.total}` : d.label;
+      return `<div class="day-cell ${d.key===today?'today':''}">
+        <div class="day-arc">${arcSvg(ratio)}<span class="day-inner">${label}</span></div>
+      </div>`;
+    }).join('');
+
+    const nameHtml = (ui.editingRoutineId === routine.id)
+      ? `<input class="inline-input" id="rename-routine-${routine.id}" value="${esc(routine.name)}" maxlength="40">`
+      : `<span class="routine-name" data-rename-routine="${routine.id}">${esc(routine.name)}</span>`;
+
+    let tasksHtml = '';
+    routine.tasks.forEach(t => {
+      if(ui.editingTaskId === t.id){
+        tasksHtml += `<div class="task-row">
+          <div class="task-check"></div>
+          <input class="inline-input" id="rename-task-${t.id}" value="${esc(t.name)}" maxlength="60">
+        </div>`;
+      } else {
+        tasksHtml += `<div class="task-row ${t.done?'done':''}" data-toggle-task="${t.id}" data-routine="${routine.id}">
+          <div class="task-check"><i class="fas fa-check"></i></div>
+          <span class="task-name" data-rename-task="${t.id}" data-routine="${routine.id}">${esc(t.name)}</span>
+          <button class="task-del" data-del-task="${t.id}" data-routine="${routine.id}" title="Delete task"><i class="fas fa-times"></i></button>
+        </div>`;
+      }
+    });
+
+    if(ui.addingTaskToRoutine === routine.id){
+      tasksHtml += `<div class="task-row">
+        <div class="task-check"></div>
+        <input class="inline-input" id="new-task-${routine.id}" placeholder="New task…" maxlength="60">
+      </div>`;
+    } else {
+      tasksHtml += `<button class="add-task-btn" data-add-task="${routine.id}"><i class="fas fa-plus"></i>&nbsp; Add task</button>`;
+    }
+
+    html += `<div class="routine-card">
+      <div class="routine-header">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
+          ${nameHtml}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="routine-counter ${complete?'done':''}">${done}/${total} · ${pct}%</span>
+          <div class="routine-actions">
+            <button class="mini-btn danger" data-del-routine="${routine.id}" title="Delete routine"><i class="fas fa-trash"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="week-strip">${strip}</div>
+      <div class="task-list">${tasksHtml}</div>
+    </div>`;
+  });
+
+  list.innerHTML = html;
+  bindHabitsEvents();
+
+  // Focus editing inputs
+  if(ui.editingRoutineId){
+    const el = document.getElementById(`rename-routine-${ui.editingRoutineId}`);
+    if(el){ el.focus(); el.select(); }
+  }
+  if(ui.editingTaskId){
+    const el = document.getElementById(`rename-task-${ui.editingTaskId}`);
+    if(el){ el.focus(); el.select(); }
+  }
+  if(ui.addingTaskToRoutine){
+    const el = document.getElementById(`new-task-${ui.addingTaskToRoutine}`);
+    if(el) el.focus();
+  }
+}
+
+function bindHabitsEvents(){
+  const list = document.getElementById('habitsList');
+
+  list.querySelectorAll('[data-toggle-task]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if(e.target.closest('[data-rename-task]') || e.target.closest('[data-del-task]')) return;
+      const rid = el.dataset.routine, tid = el.dataset.toggleTask;
+      const r = state.routines.find(x => x.id === rid); if(!r) return;
+      const t = r.tasks.find(x => x.id === tid); if(!t) return;
+      t.done = !t.done;
+      saveState();
+      renderHabits();
+    });
+  });
+
+  list.querySelectorAll('[data-rename-task]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      ui.editingTaskId = el.dataset.renameTask;
+      ui.editingRoutineId = null;
+      ui.addingTaskToRoutine = null;
+      renderHabits();
+    });
+  });
+
+  list.querySelectorAll('[data-del-task]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const rid = el.dataset.routine, tid = el.dataset.delTask;
+      const r = state.routines.find(x => x.id === rid); if(!r) return;
+      r.tasks = r.tasks.filter(x => x.id !== tid);
+      saveState();
+      renderHabits();
+    });
+  });
+
+  list.querySelectorAll('[data-rename-routine]').forEach(el => {
+    el.addEventListener('click', () => {
+      ui.editingRoutineId = el.dataset.renameRoutine;
+      ui.editingTaskId = null;
+      ui.addingTaskToRoutine = null;
+      renderHabits();
+    });
+  });
+
+  list.querySelectorAll('[data-add-task]').forEach(el => {
+    el.addEventListener('click', () => {
+      ui.addingTaskToRoutine = el.dataset.addTask;
+      ui.editingTaskId = null;
+      ui.editingRoutineId = null;
+      renderHabits();
+    });
+  });
+
+  list.querySelectorAll('[data-del-routine]').forEach(el => {
+    el.addEventListener('click', () => {
+      const rid = el.dataset.delRoutine;
+      const r = state.routines.find(x => x.id === rid); if(!r) return;
+      if(!confirm(`Delete routine "${r.name}"? This can't be undone.`)) return;
+      state.routines = state.routines.filter(x => x.id !== rid);
+      saveState();
+      renderHabits();
+    });
+  });
+
+  // Inline rename save/cancel
+  if(ui.editingRoutineId){
+    const el = document.getElementById(`rename-routine-${ui.editingRoutineId}`);
+    if(el){
+      el.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter'){ commitRoutineRename(el.value.trim()); }
+        else if(e.key === 'Escape'){ ui.editingRoutineId = null; renderHabits(); }
+      });
+      el.addEventListener('blur', () => { commitRoutineRename(el.value.trim()); });
+    }
+  }
+  if(ui.editingTaskId){
+    const el = document.getElementById(`rename-task-${ui.editingTaskId}`);
+    if(el){
+      el.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter'){ commitTaskRename(el.value.trim()); }
+        else if(e.key === 'Escape'){ ui.editingTaskId = null; renderHabits(); }
+      });
+      el.addEventListener('blur', () => { commitTaskRename(el.value.trim()); });
+    }
+  }
+  if(ui.addingTaskToRoutine){
+    const el = document.getElementById(`new-task-${ui.addingTaskToRoutine}`);
+    if(el){
+      el.addEventListener('keydown', (e) => {
+        if(e.key === 'Enter'){ commitNewTask(el.value.trim()); }
+        else if(e.key === 'Escape'){ ui.addingTaskToRoutine = null; renderHabits(); }
+      });
+      el.addEventListener('blur', () => { commitNewTask(el.value.trim()); });
+    }
+  }
+}
+
+function commitRoutineRename(val){
+  if(!ui.editingRoutineId) return;
+  const r = state.routines.find(x => x.id === ui.editingRoutineId);
+  if(r && val) r.name = val;
+  ui.editingRoutineId = null;
+  saveState();
+  renderHabits();
+}
+function commitTaskRename(val){
+  if(!ui.editingTaskId) return;
+  for(const r of state.routines){
+    const t = r.tasks.find(x => x.id === ui.editingTaskId);
+    if(t){ if(val) t.name = val; break; }
+  }
+  ui.editingTaskId = null;
+  saveState();
+  renderHabits();
+}
+function commitNewTask(val){
+  if(!ui.addingTaskToRoutine) return;
+  const r = state.routines.find(x => x.id === ui.addingTaskToRoutine);
+  if(r && val){
+    r.tasks.push({ id: uid(), name: val, done: false });
+  }
+  ui.addingTaskToRoutine = null;
+  saveState();
+  renderHabits();
+}
+
+/* ============================================================
+   BOOKS RENDERING
+   ============================================================ */
+function getGenres(){
+  const set = new Set();
+  state.books.forEach(b => { if(b.genre && b.genre.trim()) set.add(b.genre.trim()); });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b));
+}
+
+function renderBooks(){
+  const list = document.getElementById('booksList');
+  const empty = document.getElementById('booksEmpty');
+
+  const f = ui.bookFilters;
+  let arr = state.books.filter(b => {
+    if(f.q){
+      const q = f.q.toLowerCase();
+      const hay = ((b.title||'') + ' ' + (b.author||'') + ' ' + (b.notes||'')).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    if(f.status !== 'all' && b.status !== f.status) return false;
+    if(f.genre !== 'all' && (b.genre||'') !== f.genre) return false;
+    return true;
+  });
+
+  const sorters = {
+    title: (a,b) => (a.title||'').localeCompare(b.title||''),
+    author: (a,b) => (a.author||'').localeCompare(b.author||''),
+    rating: (a,b) => (b.rating||0) - (a.rating||0),
+    finished: (a,b) => (b.dateFinished||'').localeCompare(a.dateFinished||''),
+    added: (a,b) => (b.addedAt||0) - (a.addedAt||0)
+  };
+  arr.sort(sorters[f.sort] || sorters.title);
+
+  // Update active filter count
+  let cnt = 0;
+  if(f.q) cnt++;
+  if(f.status !== 'all') cnt++;
+  if(f.genre !== 'all') cnt++;
+  if(f.sort !== 'title') cnt++;
+  const counter = document.getElementById('activeFilterCount');
+  const trigger = document.getElementById('searchTrigger');
+  if(cnt > 0){
+    counter.textContent = cnt;
+    counter.classList.remove('hidden');
+    trigger.classList.add('active-filter');
+  } else {
+    counter.classList.add('hidden');
+    trigger.classList.remove('active-filter');
+  }
+
+  if(arr.length === 0){
+    list.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  const statusClass = (s) => {
+    if(s === 'Reading') return 'status-reading';
+    if(s === 'Completed') return 'status-completed';
+    if(s === 'To Read') return 'status-toread';
+    return '';
+  };
+
+  list.innerHTML = arr.map(b => {
+    const stars = b.rating
+      ? '★'.repeat(b.rating) + '☆'.repeat(5 - b.rating)
+      : '☆☆☆☆☆';
+    const dates = (b.dateStarted || b.dateFinished)
+      ? `${b.dateStarted || '—'} → ${b.dateFinished || '—'}`
+      : '';
+    return `<div class="book-card" data-edit-book="${b.id}">
+      <div class="book-title-row">
+        <div style="min-width:0;flex:1">
+          <div class="book-title">${esc(b.title || 'Untitled')}</div>
+          ${b.author ? `<div class="book-author">by ${esc(b.author)}</div>` : ''}
+        </div>
+        <div class="rating-stars">${stars}</div>
+      </div>
+      <div class="book-meta">
+        ${b.genre ? `<span class="badge">${esc(b.genre)}</span>` : ''}
+        ${b.status ? `<span class="badge ${statusClass(b.status)}">${esc(b.status)}</span>` : ''}
+        ${dates ? `<span><i class="far fa-calendar"></i> ${esc(dates)}</span>` : ''}
+      </div>
+      ${b.notes ? `<div class="book-notes">"${esc(b.notes)}"</div>` : ''}
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-edit-book]').forEach(el => {
+    el.addEventListener('click', () => openBookModal(el.dataset.editBook));
+  });
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+const overlay = document.getElementById('modalOverlay');
+const modal = document.getElementById('modalContent');
+
+function openModal(html){
+  modal.innerHTML = html;
+  overlay.classList.add('active');
+  const close = modal.querySelector('.close-x');
+  if(close) close.addEventListener('click', closeModal);
+}
+function closeModal(){
+  overlay.classList.remove('active');
+  modal.innerHTML = '';
+}
+overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
+
+/* --- Add Routine --- */
+function openAddRoutineModal(){
+  openModal(`
+    <div class="modal-header">
+      <h2>New routine</h2>
+      <button class="close-x">&times;</button>
+    </div>
+    <form id="addRoutineForm">
+      <div class="form-group">
+        <label>Routine name</label>
+        <input type="text" id="routineNameInput" placeholder="e.g. Morning Routine" required maxlength="40" autofocus>
+      </div>
+      <button type="submit" class="btn btn-primary">Create routine</button>
+    </form>
+  `);
+  document.getElementById('addRoutineForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('routineNameInput').value.trim();
+    if(!name) return;
+    state.routines.push({ id: uid(), name, tasks: [], history: {} });
+    saveState();
+    renderHabits();
+    closeModal();
+  });
+}
+
+/* --- Add / Edit Book --- */
+function openBookModal(bookId){
+  const editing = !!bookId;
+  const b = editing ? state.books.find(x => x.id === bookId) : null;
+  const genres = ['Fiction','Non-Fiction','Self-Help','Fantasy','Science Fiction','Biography','History','Mystery','Romance','Thriller','Poetry','Other'];
+  const g = b?.genre || '';
+  const isCustom = g && !genres.includes(g);
+  ui.starDraft = b?.rating || 0;
+
+  openModal(`
+    <div class="modal-header">
+      <h2>${editing ? 'Edit book' : 'Add book'}</h2>
+      <button class="close-x">&times;</button>
+    </div>
+    <form id="bookForm">
+      <div class="form-group">
+        <label>Title *</label>
+        <input type="text" id="bTitle" required maxlength="120" value="${esc(b?.title||'')}">
+      </div>
+      <div class="form-group">
+        <label>Author</label>
+        <input type="text" id="bAuthor" maxlength="80" value="${esc(b?.author||'')}">
+      </div>
+      <div class="form-group">
+        <label>Genre</label>
+        <input type="text" id="bGenre" list="genreList" placeholder="Type or pick…" value="${esc(g)}">
+        <datalist id="genreList">${genres.map(x => `<option value="${x}">`).join('')}</datalist>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="bStatus">
+          <option value="To Read" ${b?.status==='To Read'?'selected':''}>To Read</option>
+          <option value="Reading" ${(!b || b?.status==='Reading')?'selected':''}>Reading</option>
+          <option value="Completed" ${b?.status==='Completed'?'selected':''}>Completed</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date started</label>
+          <input type="date" id="bStarted" value="${esc(b?.dateStarted||'')}">
+        </div>
+        <div class="form-group">
+          <label>Date finished</label>
+          <input type="date" id="bFinished" value="${esc(b?.dateFinished||'')}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Rating</label>
+        <div class="star-picker" id="starPicker">
+          ${[1,2,3,4,5].map(i => `<span class="star ${i <= ui.starDraft ? 'on':''}" data-star="${i}">★</span>`).join('')}
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes / Quotes</label>
+        <textarea id="bNotes" maxlength="800" placeholder="Favourite quotes, thoughts…">${esc(b?.notes||'')}</textarea>
+      </div>
+      <button type="submit" class="btn btn-primary green">${editing ? 'Save changes' : 'Add book'}</button>
+      ${editing ? `<button type="button" class="btn btn-danger" id="deleteBookBtn">Delete book</button>` : ''}
+    </form>
+  `);
+
+  const picker = document.getElementById('starPicker');
+  picker.addEventListener('click', (e) => {
+    const s = e.target.closest('.star'); if(!s) return;
+    ui.starDraft = parseInt(s.dataset.star, 10);
+    picker.querySelectorAll('.star').forEach((el, idx) => {
+      el.classList.toggle('on', (idx+1) <= ui.starDraft);
+    });
+  });
+
+  document.getElementById('bookForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {
+      title: document.getElementById('bTitle').value.trim(),
+      author: document.getElementById('bAuthor').value.trim(),
+      genre: document.getElementById('bGenre').value.trim(),
+      status: document.getElementById('bStatus').value,
+      dateStarted: document.getElementById('bStarted').value,
+      dateFinished: document.getElementById('bFinished').value,
+      rating: ui.starDraft,
+      notes: document.getElementById('bNotes').value.trim()
+    };
+    if(!data.title) return;
+    if(editing){
+      Object.assign(b, data);
+    } else {
+      state.books.push({ id: uid(), addedAt: Date.now(), ...data });
+    }
+    saveState();
+    renderBooks();
+    closeModal();
+  });
+
+  if(editing){
+    document.getElementById('deleteBookBtn').addEventListener('click', () => {
+      if(!confirm('Delete this book?')) return;
+      state.books = state.books.filter(x => x.id !== bookId);
+      saveState();
+      renderBooks();
+      closeModal();
+    });
+  }
+}
+
+/* --- Search & Filter Modal --- */
+function openSearchModal(){
+  const f = ui.bookFilters;
+  const genres = getGenres();
+  const sortOptions = [
+    { k:'title', label:'Title A–Z' },
+    { k:'author', label:'Author A–Z' },
+    { k:'rating', label:'Rating ↓' },
+    { k:'finished', label:'Date finished ↓' },
+    { k:'added', label:'Recently added' }
+  ];
+
+  openModal(`
+    <div class="modal-header">
+      <h2>Search &amp; filter</h2>
+      <button class="close-x">&times;</button>
+    </div>
+    <div class="form-group">
+      <label>Search</label>
+      <input type="text" id="fQ" placeholder="Title, author, notes…" value="${esc(f.q)}" autofocus>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="fStatus">
+        <option value="all" ${f.status==='all'?'selected':''}>All statuses</option>
+        <option value="To Read" ${f.status==='To Read'?'selected':''}>To Read</option>
+        <option value="Reading" ${f.status==='Reading'?'selected':''}>Reading</option>
+        <option value="Completed" ${f.status==='Completed'?'selected':''}>Completed</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Genre</label>
+      <select id="fGenre">
+        <option value="all" ${f.genre==='all'?'selected':''}>All genres</option>
+        ${genres.map(g => `<option value="${esc(g)}" ${f.genre===g?'selected':''}>${esc(g)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Sort by</label>
+      <div class="sort-chips" id="sortChips">
+        ${sortOptions.map(o => `<button type="button" class="sort-chip ${f.sort===o.k?'active':''}" data-sort="${o.k}">${o.label}</button>`).join('')}
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary green" id="applyFilters">Apply</button>
+    <button type="button" class="btn btn-secondary" id="resetFilters">Reset all</button>
+  `);
+
+  document.getElementById('sortChips').addEventListener('click', (e) => {
+    const c = e.target.closest('.sort-chip'); if(!c) return;
+    ui.bookFilters.sort = c.dataset.sort;
+    document.querySelectorAll('#sortChips .sort-chip').forEach(x => {
+      x.classList.toggle('active', x.dataset.sort === ui.bookFilters.sort);
+    });
+  });
+
+  document.getElementById('applyFilters').addEventListener('click', () => {
+    ui.bookFilters.q = document.getElementById('fQ').value.trim();
+    ui.bookFilters.status = document.getElementById('fStatus').value;
+    ui.bookFilters.genre = document.getElementById('fGenre').value;
+    renderBooks();
+    closeModal();
+  });
+
+  document.getElementById('resetFilters').addEventListener('click', () => {
+    ui.bookFilters = { q:'', status:'all', genre:'all', sort:'title' };
+    renderBooks();
+    closeModal();
+  });
+}
+
+/* --- Settings Modal --- */
+function openSettingsModal(){
+  const lastSync = localStorage.getItem(GAPI_LAST_SYNC);
+  const clientId = localStorage.getItem(GAPI_CLIENT_KEY) || '';
+
+  openModal(`
+    <div class="modal-header">
+      <h2>Settings</h2>
+      <button class="close-x">&times;</button>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="label">Google Drive sync</div>
+        <div class="sub">Folder: <strong>${DRIVE_FOLDER}</strong> · File: ${DRIVE_FILE}</div>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label>Google OAuth Client ID</label>
+      <input type="text" id="clientIdInput" placeholder="Paste your CjayNotes client ID…" value="${esc(clientId)}">
+    </div>
+    <div class="settings-row">
+      <div>
+        <div class="label">Status</div>
+        <div class="sub" id="driveStatusText">${clientId ? (lastSync ? 'Last synced: ' + lastSync : 'Not synced yet') : 'Not configured'}</div>
+      </div>
+      <button class="chip-btn" id="saveClientBtn">Save ID</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="chip-btn" id="driveConnectBtn" style="flex:1">Connect Drive</button>
+      <button class="chip-btn" id="driveSyncBtn" style="flex:1">Sync now</button>
+    </div>
+
+    <div class="settings-row" style="margin-top:20px">
+      <div>
+        <div class="label">Local backup</div>
+        <div class="sub">Export / import JSON</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="chip-btn" id="exportBtn" style="flex:1"><i class="fas fa-download"></i> Export</button>
+      <button class="chip-btn" id="importBtn" style="flex:1"><i class="fas fa-upload"></i> Import</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json,.json" class="hidden">
+
+    <div class="settings-row" style="margin-top:20px">
+      <div>
+        <div class="label" style="color:#c0392b">Danger zone</div>
+        <div class="sub">This cannot be undone</div>
+      </div>
+    </div>
+    <button class="btn btn-danger" id="clearAllBtn" style="margin-top:10px">Clear all data</button>
+
+    <div style="text-align:center;color:var(--muted);font-size:.72rem;margin-top:20px">
+      BookHabits · v1.0 · Shared OAuth client with CjayNotes
+    </div>
+  `);
+
+  document.getElementById('saveClientBtn').addEventListener('click', () => {
+    const v = document.getElementById('clientIdInput').value.trim();
+    if(v) localStorage.setItem(GAPI_CLIENT_KEY, v);
+    else localStorage.removeItem(GAPI_CLIENT_KEY);
+    toast('Client ID saved');
+    initDrive().then(() => {
+      document.getElementById('driveStatusText').textContent =
+        v ? 'Ready — click Connect Drive' : 'Not configured';
+    });
+  });
+
+  document.getElementById('driveConnectBtn').addEventListener('click', driveConnect);
+  document.getElementById('driveSyncBtn').addEventListener('click', driveSync);
+
+  document.getElementById('exportBtn').addEventListener('click', exportBackup);
+  document.getElementById('importBtn').addEventListener('click', () => {
+    document.getElementById('importFile').click();
+  });
+  document.getElementById('importFile').addEventListener('change', (e) => {
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const p = JSON.parse(reader.result);
+        if(!p.routines && !p.books) throw new Error('Bad file');
+        state.lastActiveDate = p.lastActiveDate || todayKey();
+        state.routines = Array.isArray(p.routines) ? p.routines : [];
+        state.books = Array.isArray(p.books) ? p.books : [];
+        saveState();
+        renderHabits(); renderBooks();
+        closeModal();
+        toast('Backup imported');
+      }catch(err){ toast('Invalid backup file'); }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById('clearAllBtn').addEventListener('click', () => {
+    if(!confirm('Delete ALL routines and books? This cannot be undone.')) return;
+    state = { lastActiveDate: todayKey(), routines: [], books: [] };
+    saveState();
+    renderHabits(); renderBooks();
+    closeModal();
+    toast('All data cleared');
+  });
+}
+
+/* ============================================================
+   GOOGLE DRIVE SYNC (reuses CjayNotes client ID)
+   ============================================================ */
+let gapiReady = false;
+let tokenClient = null;
+let accessToken = null;
+
+async function initDrive(){
+  const clientId = localStorage.getItem(GAPI_CLIENT_KEY);
+  if(!clientId) return false;
+  if(gapiReady) return true;
+  if(typeof gapi === 'undefined' || typeof google === 'undefined'){
+    // Libraries not loaded yet — retry shortly
+    setTimeout(initDrive, 500);
+    return false;
+  }
+  try{
+    await new Promise(res => gapi.load('client', res));
+    await gapi.client.init({
+      discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+    });
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: (resp) => {
+        if(resp.access_token){
+          accessToken = resp.access_token;
+          gapi.client.setToken({ access_token: accessToken });
+        }
+      }
+    });
+    gapiReady = true;
+    return true;
+  }catch(e){
+    console.warn('Drive init failed', e);
+    return false;
+  }
+}
+
+function driveConnect(){
+  if(!localStorage.getItem(GAPI_CLIENT_KEY)){
+    toast('Set your Client ID first');
+    return;
+  }
+  if(!gapiReady){
+    initDrive().then(ok => { if(!ok) toast('Drive not ready — try again in a moment'); else tokenClient.requestAccessToken(); });
+    return;
+  }
+  tokenClient.requestAccessToken();
+}
+
+async function getOrCreateFolder(){
+  const q = `mimeType='application/vnd.google-apps.folder' and name='${DRIVE_FOLDER}' and trashed=false`;
+  const res = await gapi.client.drive.files.list({ q, fields:'files(id,name)', spaces:'drive' });
+  if(res.result.files && res.result.files.length) return res.result.files[0].id;
+  const created = await gapi.client.drive.files.create({
+    resource: { name: DRIVE_FOLDER, mimeType: 'application/vnd.google-apps.folder' },
+    fields: 'id'
+  });
+  return created.result.id;
+}
+
+async function findFile(folderId){
+  const q = `'${folderId}' in parents and name='${DRIVE_FILE}' and trashed=false`;
+  const res = await gapi.client.drive.files.list({ q, fields:'files(id,name,modifiedTime)', spaces:'drive' });
+  return (res.result.files && res.result.files[0]) || null;
+}
+
+async function driveSync(){
+  if(!accessToken){ toast('Connect to Drive first'); return; }
+  try{
+    const folderId = await getOrCreateFolder();
+    const file = await findFile(folderId);
+    const body = JSON.stringify(state);
+    const metadata = { name: DRIVE_FILE, mimeType: 'application/json' };
+    if(file){
+      await gapi.client.request({
+        path: `/upload/drive/v3/files/${file.id}`,
+        method: 'PATCH',
+        params: { uploadType: 'media' },
+        body
+      });
+    } else {
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ ...metadata, parents:[folderId] })], {type:'application/json'}));
+      form.append('file', new Blob([body], {type:'application/json'}));
+      await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + accessToken },
+        body: form
+      });
+    }
+    const stamp = new Date().toLocaleString();
+    localStorage.setItem(GAPI_LAST_SYNC, stamp);
+    toast('Synced to Drive');
+  }catch(e){
+    console.warn(e);
+    toast('Sync failed');
+  }
+}
+
+/* ============================================================
+   BACKUP EXPORT
+   ============================================================ */
+function exportBackup(){
+  const data = JSON.stringify(state, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = todayKey();
+  a.href = url;
+  a.download = `cjay-bookhabits-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast('Backup downloaded');
+}
+
+/* ============================================================
+   TABS / THEME / FAB / TOAST
+   ============================================================ */
+function switchTab(tab){
+  ui.activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.getElementById('habitsTab').classList.toggle('active', tab === 'habits');
+  document.getElementById('booksTab').classList.toggle('active', tab === 'books');
+}
+
+document.querySelectorAll('.tab-btn').forEach(b => {
+  b.addEventListener('click', () => switchTab(b.dataset.tab));
+});
+
+function applyTheme(t){
+  document.body.dataset.theme = t;
+  localStorage.setItem('cjay_bookhabits_theme', t);
+  const icon = document.querySelector('#themeBtn i');
+  if(icon) icon.className = t === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+}
+(function initTheme(){
+  const saved = localStorage.getItem('cjay_bookhabits_theme') || 'light';
+  applyTheme(saved);
+})();
+document.getElementById('themeBtn').addEventListener('click', () => {
+  applyTheme(document.body.dataset.theme === 'dark' ? 'light' : 'dark');
+});
+
+document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
+document.getElementById('searchTrigger').addEventListener('click', openSearchModal);
+
+document.getElementById('fabBtn').addEventListener('click', () => {
+  if(ui.activeTab === 'habits') openAddRoutineModal();
+  else openBookModal(null);
+});
+
+let toastTimer = null;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+function boot(){
+  loadState();
+  checkMidnightRollover();
+  renderHabits();
+  renderBooks();
+  initDrive();
+}
+boot();
+
+})();
+</script>
+</body>
+</html>
