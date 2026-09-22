@@ -1,7 +1,7 @@
 {
   "name": "BookHabits",
   "short_name": "BookHabits",
-  "start_url": "/",
+"start_url": "/BookHabits/",
   "display": "standalone",
   "background_color": "#f2f5fa",
   "theme_color": "#1a7ab0",
