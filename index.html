@@ -384,7 +384,102 @@ function routineRatioForDate(routine, dateKey, today){
   if(h) return { done: h.done, total: h.total };
   return { done: 0, total: routine.tasks.length || 0 };
 }
+function computeHistoryStats(){
+  const now = new Date();
+  const periods = { week: 7, month: 30, quarter: 90 };
+  const stats = { week:{}, month:{}, quarter:{} };
+  
+  state.routines.forEach(r => {
+    stats.week[r.id] = { done:0, total:0 };
+    stats.month[r.id] = { done:0, total:0 };
+    stats.quarter[r.id] = { done:0, total:0 };
+    
+    for (let i = 0; i < 90; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      d.setDate(d.getDate() - i);
+      const key = todayKey(d);
+      const rec = (key === todayKey()) 
+        ? { done: r.tasks.filter(t=>t.done).length, total: r.tasks.length }
+        : (r.history && r.history[key]) || { done:0, total: r.tasks.length || 0 };
+      
+      if (i < 7)  { stats.week[r.id].done += rec.done; stats.week[r.id].total += rec.total; }
+      if (i < 30) { stats.month[r.id].done += rec.done; stats.month[r.id].total += rec.total; }
+      stats.quarter[r.id].done += rec.done; stats.quarter[r.id].total += rec.total;
+    }
+  });
+  return stats;
+}
+  function openHistoryModal(){
+  const stats = computeHistoryStats();
+  const pct = (s) => s.total ? Math.round((s.done/s.total)*100) : 0;
+  
+  // Build a 30-day grid for the "heatmap" view
+  const days = [];
+  const now = new Date();
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    d.setDate(d.getDate() - i);
+    days.push({ date:d, key:todayKey(d) });
+  }
+  
+  let routinesHtml = '';
+  state.routines.forEach(r => {
+    const w = stats.week[r.id], m = stats.month[r.id], q = stats.quarter[r.id];
+    
+    const heatmap = days.map(d => {
+      const rec = (d.key === todayKey())
+        ? { done: r.tasks.filter(t=>t.done).length, total: r.tasks.length }
+        : (r.history && r.history[d.key]) || { done:0, total: r.tasks.length || 0 };
+      const ratio = rec.total ? rec.done/rec.total : 0;
+      const opacity = ratio === 0 ? 0.08 : 0.2 + (ratio * 0.8);
+      return `<div title="${d.key}: ${rec.done}/${rec.total}" 
+        style="width:14px;height:14px;border-radius:4px;background:var(--blue);opacity:${opacity}"></div>`;
+    }).join('');
+    
+    routinesHtml += `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px;margin-bottom:12px">
+        <div style="font-weight:700;color:var(--blue-deep);margin-bottom:12px">${esc(r.name)}</div>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+          <div style="text-align:center;padding:10px 4px;background:var(--bg);border-radius:12px">
+            <div style="font-size:1.3rem;font-weight:700;color:var(--blue)">${pct(w)}%</div>
+            <div style="font-size:.65rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">7 Days</div>
+          </div>
+          <div style="text-align:center;padding:10px 4px;background:var(--bg);border-radius:12px">
+            <div style="font-size:1.3rem;font-weight:700;color:var(--blue)">${pct(m)}%</div>
+            <div style="font-size:.65rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">30 Days</div>
+          </div>
+          <div style="text-align:center;padding:10px 4px;background:var(--bg);border-radius:12px">
+            <div style="font-size:1.3rem;font-weight:700;color:var(--blue)">${pct(q)}%</div>
+            <div style="font-size:.65rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">90 Days</div>
+          </div>
+        </div>
+        
+        <div style="font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Last 30 days</div>
+        <div style="display:flex;gap:3px;flex-wrap:wrap">${heatmap}</div>
+      </div>
+    `;
+  });
+  
+  if (!routinesHtml) {
+    routinesHtml = `<div class="empty-state" style="padding:32px 16px">
+      <div class="empty-title">No routines yet</div>
+      <div class="empty-sub">Add a routine to start tracking your history.</div>
+    </div>`;
+  }
 
+  openModal(`
+    <div class="modal-header">
+      <h2>Habit History</h2>
+      <button class="close-x">&times;</button>
+    </div>
+    <div style="font-size:.8rem;color:var(--muted);margin-bottom:16px">
+      Completion rates based on your saved daily records.
+    </div>
+    ${routinesHtml}
+  `);
+}
+  
 function arcSvg(ratio){
   const r = 15.9155;
   const C = 2 * Math.PI * r;
@@ -978,8 +1073,21 @@ function openSettingsModal(){
     <button class="btn btn-danger" id="clearAllBtn" style="margin-top:10px">Clear all data</button>
 
     <div style="text-align:center;color:var(--muted);font-size:.72rem;margin-top:20px">
-      BookHabits · v1.1 · Shared OAuth client with CjayNotes
+     BookHabits · <span id="versionTrigger" style="cursor:pointer;font-weight:700">v1.1</span> · Shared OAuth client with CjayNotes
     </div>
+    const versionTrigger = document.getElementById('versionTrigger');
+if (versionTrigger) {
+  let tapCount = 0, tapTimer = null;
+  versionTrigger.addEventListener('click', () => {
+    tapCount++;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => { tapCount = 0; }, 600);
+    if (tapCount >= 3) {  // 3 quick taps unlocks history
+      tapCount = 0;
+      openHistoryModal();
+    }
+  });
+}
   `);
 
   document.getElementById('saveClientBtn').addEventListener('click', async () => {
