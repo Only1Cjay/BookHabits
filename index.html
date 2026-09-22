@@ -1075,19 +1075,7 @@ function openSettingsModal(){
     <div style="text-align:center;color:var(--muted);font-size:.72rem;margin-top:20px">
      BookHabits · <span id="versionTrigger" style="cursor:pointer;font-weight:700">v1.1</span> · Shared OAuth client with CjayNotes
     </div>
-    const versionTrigger = document.getElementById('versionTrigger');
-if (versionTrigger) {
-  let tapCount = 0, tapTimer = null;
-  versionTrigger.addEventListener('click', () => {
-    tapCount++;
-    clearTimeout(tapTimer);
-    tapTimer = setTimeout(() => { tapCount = 0; }, 600);
-    if (tapCount >= 3) {  // 3 quick taps unlocks history
-      tapCount = 0;
-      openHistoryModal();
-    }
-  });
-}
+   
   `);
 
   document.getElementById('saveClientBtn').addEventListener('click', async () => {
@@ -1141,6 +1129,19 @@ if (versionTrigger) {
     closeModal();
     toast('All data cleared');
   });
+  const versionTrigger = document.getElementById('versionTrigger');
+if (versionTrigger) {
+  let tapCount = 0, tapTimer = null;
+  versionTrigger.addEventListener('click', () => {
+    tapCount++;
+    clearTimeout(tapTimer);
+    tapTimer = setTimeout(() => { tapCount = 0; }, 600);
+    if (tapCount >= 3) {  // 3 quick taps unlocks history
+      tapCount = 0;
+      openHistoryModal();
+    }
+  });
+}
 }
 
 /* ============================================================
