@@ -49,8 +49,63 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justif
 .brand-logo{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,var(--blue),var(--green));display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;box-shadow:var(--shadow)}
 .brand-name{font-weight:700;font-size:1.15rem;letter-spacing:-.02em}
 .brand-name small{display:block;font-size:.68rem;font-weight:500;color:var(--muted);letter-spacing:0}
-.top-actions{display:flex;gap:8px}
-.icon-btn{width:40px;height:40px;border-radius:14px;border:1px solid var(--border);background:var(--card);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;transition:.15s;box-shadow:var(--shadow)}
+.top-actions{display:flex;gap:8px;align-items:center}
+
+/* Menu dropdown */
+.menu-wrap{position:relative}
+.menu-dropdown{
+  position:absolute;
+  top:calc(100% + 8px);
+  right:0;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  padding:6px;
+  min-width:180px;
+  z-index:100;
+  animation:menuPop .15s ease-out;
+}
+@keyframes menuPop{
+  from{opacity:0;transform:translateY(-6px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.menu-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  width:100%;
+  background:none;
+  border:none;
+  padding:11px 14px;
+  border-radius:12px;
+  font-size:.88rem;
+  font-weight:600;
+  color:var(--text);
+  cursor:pointer;
+  text-align:left;
+  font-family:inherit;
+  transition:.15s;
+}
+.menu-item:hover{
+  background:var(--blue-soft);
+  color:var(--blue);
+}
+.menu-item i{
+  width:16px;
+  text-align:center;
+  color:var(--muted);
+  font-size:.9rem;
+  transition:color .15s;
+}
+.menu-item:hover i{
+  color:var(--blue);
+}
+
+/* Hide subtitle on mobile */
+@media (max-width:520px){
+  .brand-name small{display:none}
+}.icon-btn{width:40px;height:40px;border-radius:14px;border:1px solid var(--border);background:var(--card);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;transition:.15s;box-shadow:var(--shadow)}
 .icon-btn:hover{color:var(--blue);border-color:var(--blue)}
 .icon-btn:active{transform:scale(.94)}
 
@@ -61,6 +116,29 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justif
 .tab-btn.active[data-tab="books"]{background:var(--green);color:#fff;box-shadow:0 6px 14px rgba(14,122,90,.35)}
 .tab-content{display:none;flex-direction:column;gap:14px}
 .tab-content.active{display:flex}
+
+/* Tab switch animation */
+.tab-content.active{
+  animation:tabSlideIn .28s ease-out;
+}
+.tab-content.active.slide-from-right{
+  animation:tabSlideInRight .28s ease-out;
+}
+.tab-content.active.slide-from-left{
+  animation:tabSlideInLeft .28s ease-out;
+}
+@keyframes tabSlideInRight{
+  from{opacity:0;transform:translateX(14px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@keyframes tabSlideInLeft{
+  from{opacity:0;transform:translateX(-14px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@keyframes tabSlideIn{
+  from{opacity:0}
+  to{opacity:1}
+}
 
 /* Routine card (Habits) */
 .routine-card{background:var(--card);border-radius:24px;padding:18px;border:1px solid var(--border);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px}
@@ -218,10 +296,23 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justif
     </div>
     <div class="top-actions">
       <button class="icon-btn" id="themeBtn" title="Toggle theme"><i class="fas fa-moon"></i></button>
-      <button class="icon-btn" id="settingsBtn" title="Settings"><i class="fas fa-cog"></i></button>
+      <div class="menu-wrap">
+        <button class="icon-btn" id="menuBtn" title="Menu" aria-expanded="false">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="menu-dropdown hidden" id="menuDropdown">
+          <button class="menu-item hidden" id="historyBtn">
+            <i class="fas fa-chart-line"></i>
+            <span>History</span>
+          </button>
+          <button class="menu-item" id="settingsBtn">
+            <i class="fas fa-cog"></i>
+            <span>Settings</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
-
   <!-- Tab toggle -->
   <div class="tab-toggle">
     <button class="tab-btn active" data-tab="habits"><i class="fas fa-check-circle"></i> Habits</button>
@@ -230,18 +321,6 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justif
 
 <!-- Habits tab -->
 <div class="tab-content active" id="habitsTab">
-  <!-- Stats toggle row -->
-  <div style="display:flex;justify-content:flex-end;margin-bottom:-4px">
-    <button class="icon-btn" id="statsToggleBtn" title="Show habit history" style="width:auto;padding:0 14px;gap:8px;font-size:.82rem;font-weight:600">
-      <i class="fas fa-chart-line"></i><span>History</span>
-    </button>
-  </div>
-  
-  <!-- Inline stats panel (hidden by default) -->
-  <div id="statsPanel" class="hidden" style="background:var(--card);border-radius:24px;padding:18px;border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:4px">
-    <div id="statsPanelContent"></div>
-  </div>
-
   <div id="habitsList" style="display:flex;flex-direction:column;gap:14px"></div>
     <div class="empty-state hidden" id="habitsEmpty">
       <svg viewBox="0 0 120 120" fill="none">
@@ -604,80 +683,6 @@ function renderHabits(){
     const el = document.getElementById(`new-task-${ui.addingTaskToRoutine}`);
     if(el) el.focus();
   }
-}
-function renderInlineStats(){
-  const panel = document.getElementById('statsPanelContent');
-  if(!panel) return;
-  
-  const now = new Date();
-  const periods = { week:7, month:30, quarter:90 };
-  const stats = { week:{}, month:{}, quarter:{} };
-  
-  state.routines.forEach(r => {
-    stats.week[r.id] = { done:0, total:0 };
-    stats.month[r.id] = { done:0, total:0 };
-    stats.quarter[r.id] = { done:0, total:0 };
-    
-    for(let i=0; i<90; i++){
-      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      d.setDate(d.getDate() - i);
-      const key = todayKey(d);
-      const rec = (key === todayKey())
-        ? { done: r.tasks.filter(t=>t.done).length, total: r.tasks.length }
-        : (r.history && r.history[key]) || { done:0, total: r.tasks.length || 0 };
-      
-      if(i < 7){ stats.week[r.id].done += rec.done; stats.week[r.id].total += rec.total; }
-      if(i < 30){ stats.month[r.id].done += rec.done; stats.month[r.id].total += rec.total; }
-      stats.quarter[r.id].done += rec.done; stats.quarter[r.id].total += rec.total;
-    }
-  });
-  
-  const pct = (s) => s.total ? Math.round((s.done/s.total)*100) : 0;
-  
-  // 30-day heatmap data
-  const days = [];
-  for(let i=29; i>=0; i--){
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    d.setDate(d.getDate() - i);
-    days.push({ date:d, key:todayKey(d) });
-  }
-  
-  let html = `<div style="font-size:.7rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px">Habit history · last 30 days</div>`;
-  
-  if(state.routines.length === 0){
-    html += `<div style="text-align:center;padding:20px;color:var(--muted);font-size:.85rem">No routines to track yet.</div>`;
-  } else {
-    state.routines.forEach(r => {
-      const w = stats.week[r.id], m = stats.month[r.id], q = stats.quarter[r.id];
-      
-      const heatmap = days.map(d => {
-        const rec = (d.key === todayKey())
-          ? { done: r.tasks.filter(t=>t.done).length, total: r.tasks.length }
-          : (r.history && r.history[d.key]) || { done:0, total: r.tasks.length || 0 };
-        const ratio = rec.total ? rec.done/rec.total : 0;
-        const opacity = ratio === 0 ? 0.08 : 0.2 + (ratio * 0.8);
-        return `<div title="${d.key}: ${rec.done}/${rec.total}" 
-          style="width:11px;height:11px;border-radius:3px;background:var(--blue);opacity:${opacity}"></div>`;
-      }).join('');
-      
-      html += `
-        <div style="margin-bottom:16px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div style="font-weight:700;color:var(--blue-deep);font-size:.95rem">${esc(r.name)}</div>
-            <div style="font-size:.7rem;color:var(--muted);font-weight:600">${pct(w)}% · 7d</div>
-          </div>
-          <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px">${heatmap}</div>
-          <div style="display:flex;gap:12px;font-size:.68rem;color:var(--muted);font-weight:600">
-            <span>7d: <span style="color:var(--blue)">${pct(w)}%</span></span>
-            <span>30d: <span style="color:var(--blue)">${pct(m)}%</span></span>
-            <span>90d: <span style="color:var(--blue)">${pct(q)}%</span></span>
-          </div>
-        </div>
-      `;
-    });
-  }
-  
-  panel.innerHTML = html;
 }
   
 function bindHabitsEvents(){
@@ -1470,15 +1475,85 @@ function exportBackup(){
    TABS / THEME / FAB / TOAST
    ============================================================ */
 function switchTab(tab){
+  const prev = ui.activeTab;
+  if(prev === tab) return;
+
   ui.activeTab = tab;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.getElementById('habitsTab').classList.toggle('active', tab === 'habits');
-  document.getElementById('booksTab').classList.toggle('active', tab === 'books');
+
+  const habitsEl = document.getElementById('habitsTab');
+  const booksEl = document.getElementById('booksTab');
+
+  // Direction: habits -> books = right, books -> habits = left
+  const fromRight = prev === 'habits' && tab === 'books';
+  const dirClass = fromRight ? 'slide-from-right' : 'slide-from-left';
+
+  [habitsEl, booksEl].forEach(el => {
+    el.classList.remove('slide-from-right', 'slide-from-left');
+  });
+
+  habitsEl.classList.toggle('active', tab === 'habits');
+  booksEl.classList.toggle('active', tab === 'books');
+
+  const newActive = tab === 'habits' ? habitsEl : booksEl;
+  void newActive.offsetWidth;
+  newActive.classList.add(dirClass);
+
+  // History menu item visible only on Habits tab
+  const historyBtn = document.getElementById('historyBtn');
+  if(historyBtn){
+    historyBtn.classList.toggle('hidden', tab !== 'habits');
+  }
 }
 
 document.querySelectorAll('.tab-btn').forEach(b => {
   b.addEventListener('click', () => switchTab(b.dataset.tab));
 });
+
+/* Menu open/close */
+(function initMenu(){
+  const menuBtn = document.getElementById('menuBtn');
+  const menuDropdown = document.getElementById('menuDropdown');
+  if(!menuBtn || !menuDropdown) return;
+
+  let menuOpen = false;
+  function openMenu(){
+    menuOpen = true;
+    menuDropdown.classList.remove('hidden');
+    menuBtn.setAttribute('aria-expanded', 'true');
+  }
+  function closeMenu(){
+    menuOpen = false;
+    menuDropdown.classList.add('hidden');
+    menuBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menuOpen ? closeMenu() : openMenu();
+  });
+
+  document.addEventListener('click', (e) => {
+    if(!menuOpen) return;
+    if(e.target.closest('.menu-wrap')) return;
+    closeMenu();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && menuOpen) closeMenu();
+  });
+
+  // Menu items
+  const historyBtn = document.getElementById('historyBtn');
+  if(historyBtn){
+    historyBtn.addEventListener('click', () => {
+      closeMenu();
+      openHistoryModal();
+    });
+  }
+
+  // Settings button is bound below (existing code)
+})();
 
 function applyTheme(t){
   document.body.dataset.theme = t;
@@ -1535,18 +1610,11 @@ function boot(){
   renderHabits();
   renderBooks();
   initDrive();
-  document.getElementById('statsToggleBtn').addEventListener('click', () => {
-  const panel = document.getElementById('statsPanel');
-  const isHidden = panel.classList.contains('hidden');
-  if(isHidden){
-    renderInlineStats();
-    panel.classList.remove('hidden');
-    document.getElementById('statsToggleBtn').classList.add('active-filter');
-  } else {
-    panel.classList.add('hidden');
-    document.getElementById('statsToggleBtn').classList.remove('active-filter');
+  // Ensure menu visibility reflects current tab on load
+  const historyBtn = document.getElementById('historyBtn');
+  if(historyBtn){
+    historyBtn.classList.toggle('hidden', ui.activeTab !== 'habits');
   }
-});
 }
 boot();
 
