@@ -1,0 +1,115 @@
+/* ============================================================
+   BookHabits — Service Worker
+   Aggressive caching for offline use.
+   Bump CACHE_VERSION whenever you push changes.
+   ============================================================ */
+
+const CACHE_VERSION = 'v1.0.0';
+const CACHE_NAME = 'bookhabits-' + CACHE_VERSION;
+
+const APP_ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './icon.svg'
+];
+
+const EXTERNAL_ASSETS = [
+  'https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap',
+  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await cache.addAll(APP_ASSETS).catch(() => {});
+      await Promise.all(
+        EXTERNAL_ASSETS.map(url => cache.add(url).catch(() => {}))
+      );
+      return self.skipWaiting();
+    })
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys.filter(k => k.startsWith('bookhabits-') && k !== CACHE_NAME)
+            .map(k => caches.delete(k))
+      )
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  const url = new URL(req.url);
+
+  if(req.method !== 'GET') return;
+
+  // Google APIs — network only
+  if(url.hostname.includes('googleapis.com') ||
+     url.hostname.includes('accounts.google.com') ||
+     url.hostname.includes('apis.google.com') ||
+     url.hostname.includes('gstatic.com')){
+    return;
+  }
+
+  // Fonts / icons CDN — cache-first
+  if(url.hostname.includes('fonts.googleapis.com') ||
+     url.hostname.includes('fonts.gstatic.com') ||
+     url.hostname.includes('cdnjs.cloudflare.com')){
+    event.respondWith(cacheFirst(req));
+    return;
+  }
+
+  // Same-origin — stale-while-revalidate
+  if(url.origin === self.location.origin){
+    event.respondWith(staleWhileRevalidate(req));
+    return;
+  }
+
+  // Everything else — network with cache fallback
+  event.respondWith(networkWithCacheFallback(req));
+});
+
+async function cacheFirst(req){
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(req);
+  if(cached) return cached;
+  try{
+    const fresh = await fetch(req);
+    if(fresh && fresh.status === 200) cache.put(req, fresh.clone());
+    return fresh;
+  }catch(e){
+    return cached || Response.error();
+  }
+}
+
+async function staleWhileRevalidate(req){
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(req);
+  const fetchPromise = fetch(req).then(fresh => {
+    if(fresh && fresh.status === 200){
+      cache.put(req, fresh.clone());
+    }
+    return fresh;
+  }).catch(() => cached);
+  return cached || fetchPromise;
+}
+
+async function networkWithCacheFallback(req){
+  try{
+    const fresh = await fetch(req);
+    if(fresh && fresh.status === 200){
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(req, fresh.clone());
+    }
+    return fresh;
+  }catch(e){
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(req);
+    return cached || Response.error();
+  }
+}
