@@ -284,6 +284,88 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;justif
   .book-title{font-size:.98rem}
   .form-row{grid-template-columns:1fr}
 }
+
+/* ============================================================
+   OFFLINE BANNER
+   ============================================================ */
+.offline-banner{
+  position:fixed;
+  top:0;left:0;right:0;
+  background:#d3453f;
+  color:#fff;
+  padding:10px 16px;
+  font-size:.8rem;
+  font-weight:600;
+  text-align:center;
+  z-index:5000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  transform:translateY(-100%);
+  transition:transform .3s ease;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+}
+.offline-banner.show{transform:translateY(0)}
+.offline-banner i{font-size:.85rem}
+body.offline{padding-top:42px}
+
+/* ============================================================
+   UPDATE TOAST
+   ============================================================ */
+.update-toast{
+  position:fixed;
+  bottom:100px;
+  left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:var(--text);
+  color:var(--bg);
+  padding:12px 18px;
+  border-radius:999px;
+  font-size:.82rem;
+  font-weight:600;
+  box-shadow:var(--shadow);
+  opacity:0;
+  pointer-events:none;
+  transition:.25s;
+  z-index:3001;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  max-width:calc(100vw - 40px);
+  white-space:nowrap;
+}
+.update-toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+  pointer-events:auto;
+}
+.update-toast button.update-refresh{
+  background:var(--blue);
+  color:#fff;
+  border:none;
+  padding:6px 14px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:.78rem;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+  cursor:pointer;
+}
+.update-toast button.update-refresh:hover{opacity:.9}
+.update-toast button.update-dismiss{
+  background:transparent;
+  color:var(--bg);
+  opacity:.6;
+  border:none;
+  font-size:1rem;
+  line-height:1;
+  padding:2px 4px;
+  cursor:pointer;
+  margin-left:-6px;
+  transition:opacity .15s;
+}
+.update-toast button.update-dismiss:hover{opacity:1}
 </style>
 </head>
 <body>
@@ -400,6 +482,20 @@ function uid(){ return Date.now().toString(36) + Math.random().toString(36).slic
 function todayKey(d){ d = d || new Date(); const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; }
 function esc(s){ if(s==null) return ''; return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+/* Read the app version from sw.js (single source of truth) */
+let appVersionCache = null;
+async function getAppVersion(){
+  if(appVersionCache) return appVersionCache;
+  try{
+    const res = await fetch('sw.js', { cache: 'no-store' });
+    const text = await res.text();
+    const match = text.match(/CACHE_VERSION\s*=\s*['"]([^'"]+)['"]/);
+    appVersionCache = match ? match[1] : 'v?';
+  }catch(e){
+    appVersionCache = 'v?';
+  }
+  return appVersionCache;
+}
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -1168,8 +1264,8 @@ function openSettingsModal(){
     </div>
     <button class="btn btn-danger" id="clearAllBtn" style="margin-top:10px">Clear all data</button>
 
-    <div style="text-align:center;color:var(--muted);font-size:.72rem;margin-top:20px">
-     BookHabits · <span id="versionTrigger" style="cursor:pointer;font-weight:700">v1.1</span> · Shared OAuth client with CjayNotes
+       <div style="text-align:center;color:var(--muted);font-size:.72rem;margin-top:20px">
+      BookHabits · <span id="versionTrigger" style="cursor:pointer;font-weight:700">…</span> · Shared OAuth client with CjayNotes
     </div>
    
   `);
@@ -1226,18 +1322,24 @@ function openSettingsModal(){
     toast('All data cleared');
   });
   const versionTrigger = document.getElementById('versionTrigger');
-if (versionTrigger) {
-  let tapCount = 0, tapTimer = null;
-  versionTrigger.addEventListener('click', () => {
-    tapCount++;
-    clearTimeout(tapTimer);
-    tapTimer = setTimeout(() => { tapCount = 0; }, 600);
-    if (tapCount >= 3) {  // 3 quick taps unlocks history
-      tapCount = 0;
-      openHistoryModal();
-    }
-  });
-}
+  if (versionTrigger) {
+    // Populate with the actual SW version
+    getAppVersion().then(v => {
+      versionTrigger.textContent = v;
+    });
+
+    // Easter egg: 3 quick taps → history modal
+    let tapCount = 0, tapTimer = null;
+    versionTrigger.addEventListener('click', () => {
+      tapCount++;
+      clearTimeout(tapTimer);
+      tapTimer = setTimeout(() => { tapCount = 0; }, 600);
+      if (tapCount >= 3) {
+        tapCount = 0;
+        openHistoryModal();
+      }
+    });
+  }
 }
 
 /* ============================================================
@@ -1602,14 +1704,93 @@ function toast(msg){
 }
 
 /* ============================================================
+   OFFLINE / ONLINE HANDLING
+   ============================================================ */
+function createOfflineBanner(){
+  if(document.getElementById('offlineBanner')) return;
+  const el = document.createElement('div');
+  el.className = 'offline-banner';
+  el.id = 'offlineBanner';
+  el.innerHTML = '<i class="fas fa-plane-slash"></i> You\'re offline — changes save locally and sync when you\'re back';
+  document.body.appendChild(el);
+}
+
+function updateOnlineStatus(){
+  const online = navigator.onLine;
+  const banner = document.getElementById('offlineBanner');
+  if(banner){
+    banner.classList.toggle('show', !online);
+  }
+  document.body.classList.toggle('offline', !online);
+}
+
+/* ============================================================
+   UPDATE AVAILABLE HANDLER
+   ============================================================ */
+let updateToastTimer = null;
+let updateToastDismissed = false;
+
+function showUpdateToast(){
+  if(updateToastDismissed) return;
+
+  const existing = document.getElementById('updateToast');
+  if(existing) return;
+
+  const el = document.createElement('div');
+  el.className = 'update-toast';
+  el.id = 'updateToast';
+  el.innerHTML = `
+    <span>✨ New version available</span>
+    <button class="update-refresh" id="updateRefreshBtn">Refresh</button>
+    <button class="update-dismiss" id="updateDismissBtn" aria-label="Dismiss">✕</button>
+  `;
+  document.body.appendChild(el);
+
+  requestAnimationFrame(() => el.classList.add('show'));
+
+  function hideToast(){
+    el.classList.remove('show');
+    clearTimeout(updateToastTimer);
+    setTimeout(() => el.remove(), 300);
+  }
+
+  // Auto-hide after 5 seconds
+  updateToastTimer = setTimeout(hideToast, 5000);
+
+  // Refresh button
+  document.getElementById('updateRefreshBtn').addEventListener('click', async () => {
+    try{
+      const reg = await navigator.serviceWorker.getRegistration();
+      if(reg && reg.waiting){
+        reg.waiting.postMessage({ type:'SKIP_WAITING' });
+      }
+    }catch(e){}
+    setTimeout(() => window.location.reload(), 200);
+  });
+
+  // Dismiss button
+  document.getElementById('updateDismissBtn').addEventListener('click', () => {
+    updateToastDismissed = true;
+    hideToast();
+  });
+}
+
+/* ============================================================
    BOOT
    ============================================================ */
 function boot(){
+  // Offline banner setup
+  createOfflineBanner();
+  updateOnlineStatus();
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+
   loadState();
   checkMidnightRollover();
   renderHabits();
   renderBooks();
   initDrive();
+
   // Ensure menu visibility reflects current tab on load
   const historyBtn = document.getElementById('historyBtn');
   if(historyBtn){
@@ -1620,11 +1801,37 @@ boot();
 
 })();
 
-// Register service worker
+// Register service worker + detect updates
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // Check for updates every 30 minutes
+      setInterval(() => reg.update(), 30 * 60 * 1000);
+
+      // If a new SW is already waiting, show the toast
+      if(reg.waiting){
+        showUpdateToast();
+      }
+
+      // Detect future updates
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        if(!newSW) return;
+        newSW.addEventListener('statechange', () => {
+          if(newSW.state === 'installed' && navigator.serviceWorker.controller){
+            showUpdateToast();
+          }
+        });
+      });
+    }).catch(err => {
       console.warn('SW registration failed:', err);
+    });
+
+    // React to SW messages
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if(event.data && event.data.type === 'UPDATE_AVAILABLE'){
+        showUpdateToast();
+      }
     });
   });
 }
